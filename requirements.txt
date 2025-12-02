@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+jinja2
+python-dotenv
+httpx
+pydantic
+langchain
+openai
+wikipedia
+serpapi
+pytest
+requests
+python-multipart

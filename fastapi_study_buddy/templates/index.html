@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Study Buddy</title>
+    <link rel="stylesheet" href="/static/style.css">
+  </head>
+  <body>
+    <main>
+      <h1>Study Buddy</h1>
+      <div id="chat">
+        <div id="messages"></div>
+        <textarea id="msg" placeholder="Type: 'explain: photosynthesis' or 'quiz: calculus' or 'summarize: <paste text>'"></textarea>
+        <div class="controls">
+          <button id="send">Send</button>
+        </div>
+      </div>
+    </main>
+    <script>
+      let sessionId = localStorage.getItem('sessionId') || null;
+      const sendBtn = document.getElementById('send');
+      const msgEl = document.getElementById('msg');
+      const messages = document.getElementById('messages');
+
+      function append(kind, text) {
+        const d = document.createElement('div');
+        d.className = kind;
+        d.textContent = text;
+        messages.appendChild(d);
+        messages.scrollTop = messages.scrollHeight;
+      }
+
+      sendBtn.onclick = async () => {
+        const message = msgEl.value.trim();
+        if(!message) return;
+        append('user', message);
+        msgEl.value = '';
+        const res = await fetch('/api/chat', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({message, session_id: sessionId})
+        });
+        const j = await res.json();
+        sessionId = j.session_id;
+        localStorage.setItem('sessionId', sessionId);
+        if(j.type === 'quiz') {
+          append('bot', 'Quiz:\n' + JSON.stringify(j.payload, null, 2));
+        } else if(j.type === 'summary') {
+          append('bot', j.payload);
+        } else {
+          append('bot', j.payload);
+        }
+      };
+    </script>
+  </body>
+</html>

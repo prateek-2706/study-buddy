@@ -1,0 +1,18 @@
+# .gitignore — exclude sensitive and temporary files
+.env
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+dist
+build
+*.db
+conversations.db
+.pytest_cache
+.coverage
+htmlcov
+.DS_Store
