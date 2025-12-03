@@ -30,6 +30,12 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="fastapi_study_buddy/static"), name="static")
 templates = Jinja2Templates(directory="fastapi_study_buddy/templates")
 
+
+@app.get('/', response_class=HTMLResponse)
+async def index(request: Request):
+    """Serve the chat UI."""
+    return templates.TemplateResponse('index.html', {"request": request})
+
 # Initialize database on startup
 db.init_db()
 

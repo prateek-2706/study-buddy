@@ -5,9 +5,8 @@ python-dotenv
 httpx
 pydantic
 langchain
-openai
+huggingface-hub
 wikipedia
-serpapi
 pytest
 requests
 python-multipart

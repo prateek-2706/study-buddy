@@ -1,17 +1,19 @@
-"""Simple agent implementation with optional OpenAI support.
-This gives deterministic, runnable behavior without API keys.
-If `OPENAI_API_KEY` is set in the environment, the agent will try to call OpenAI's Chat Completions API via HTTP.
+"""Simple agent implementation with HuggingFace Inference API support.
+This gives dynamic AI responses using HuggingFace models.
+If `HF_API_KEY` is set in the environment, the agent will call HuggingFace models.
 """
 from typing import List
 import os
 import httpx
 import json
 
-OPENAI_KEY = os.getenv('OPENAI_API_KEY')
+HF_KEY = os.getenv('HF_API_KEY')
+HF_MODEL = "meta-llama/Llama-2-7b-chat-hf"
+HF_API_URL = "https://api-inference.huggingface.co/models/"
 
 try:
-    from langchain.chat_models import ChatOpenAI
     from langchain.agents import initialize_agent, Tool, AgentType
+    from langchain.llms.huggingface_hub import HuggingFaceHub
     LANGCHAIN_AVAILABLE = True
 except Exception:
     LANGCHAIN_AVAILABLE = False
@@ -57,17 +59,27 @@ def _safe_calculate(expr: str) -> str:
 
 
 def _create_agent():
-    if not LANGCHAIN_AVAILABLE or not OPENAI_KEY:
+    if not LANGCHAIN_AVAILABLE or not HF_KEY:
         return None
-    llm = ChatOpenAI(temperature=0)
+    try:
+        llm = HuggingFaceHub(
+            repo_id=HF_MODEL,
+            huggingfacehub_api_token=HF_KEY,
+            model_kwargs={'temperature': 0.5, 'max_length': 256}
+        )
+    except Exception:
+        return None
 
     tools = [
         Tool(name='wikipedia_search', func=_wiki_search, description='Useful for searching Wikipedia summaries for factual information.'),
         Tool(name='calculator', func=_safe_calculate, description='Performs safe arithmetic calculations. Input is a math expression.'),
     ]
 
-    agent = initialize_agent(tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=False)
-    return agent
+    try:
+        agent = initialize_agent(tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=False)
+        return agent
+    except Exception:
+        return None
 
 
 _AGENT_INSTANCE = None
@@ -82,7 +94,7 @@ def _get_agent():
 
 def explain(topic: str, level: str = 'basic') -> str:
     topic = topic.strip() or 'a topic'
-    if OPENAI_KEY and LANGCHAIN_AVAILABLE:
+    if HF_KEY and LANGCHAIN_AVAILABLE:
         agent = _get_agent()
         if agent:
             prompt = f"You are a helpful tutor. Explain {topic} at a {level} level with a short example."
@@ -97,7 +109,7 @@ def explain(topic: str, level: str = 'basic') -> str:
 
 def generate_quiz(topic: str, count: int = 3) -> List[dict]:
     topic = topic.strip() or 'general'
-    if OPENAI_KEY and LANGCHAIN_AVAILABLE:
+    if HF_KEY and LANGCHAIN_AVAILABLE:
         agent = _get_agent()
         if agent:
             prompt = (
@@ -129,7 +141,7 @@ def summarize(text: str, sentences: int = 2) -> str:
     text = (text or '').strip()
     if not text:
         return 'No text provided to summarize.'
-    if OPENAI_KEY and LANGCHAIN_AVAILABLE:
+    if HF_KEY and LANGCHAIN_AVAILABLE:
         agent = _get_agent()
         if agent:
             prompt = f"Summarize the following text in {sentences} sentences:\n\n{text}"
