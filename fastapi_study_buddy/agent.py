@@ -97,7 +97,7 @@ def explain(topic: str, level: str = 'basic') -> str:
     if HF_KEY and LANGCHAIN_AVAILABLE:
         agent = _get_agent()
         if agent:
-            prompt = f"You are a helpful tutor. Explain {topic} at a {level} level with a short example."
+            prompt = f"You are a helpful tutor. Explain {topic} with a 50 word definition."
             try:
                 return agent.run(prompt)
             except Exception as e:
