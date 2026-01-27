@@ -94,6 +94,7 @@ def _get_agent():
 
 def explain(topic: str, level: str = 'basic') -> str:
     topic = topic.strip() or 'a topic'
+
     if HF_KEY and LANGCHAIN_AVAILABLE:
         agent = _get_agent()
         if agent:
@@ -103,8 +104,8 @@ def explain(topic: str, level: str = 'basic') -> str:
             except Exception as e:
                 return f"(agent-failed) {e}"
 
-    example = f"For example, when learning {topic}, try breaking it into smaller parts."
-    return f"{topic.capitalize()} — a short explanation at {level} level. {example}"
+    return f"{topic.capitalize()} — a short explanation at {level} level."
+
 
 
 def generate_quiz(topic: str, count: int = 3) -> List[dict]:
