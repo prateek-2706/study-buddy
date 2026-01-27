@@ -10,3 +10,5 @@ wikipedia
 pytest
 requests
 python-multipart
+langchain-google-genai
+google-generativeai
