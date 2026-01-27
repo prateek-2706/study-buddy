@@ -7,9 +7,15 @@ import os
 import httpx
 import json
 
-HF_KEY = os.getenv('HF_API_KEY')
-HF_MODEL = "meta-llama/Llama-2-7b-chat-hf"
-HF_API_URL = "https://api-inference.huggingface.co/models/"
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+HF_KEY = os.getenv("HF_API_KEY")
+HF_MODEL = os.getenv("HF_MODEL")
+HF_API_URL = os.getenv("HF_API_URL")
+
 
 try:
     from langchain.agents import initialize_agent, Tool, AgentType
