@@ -1,70 +1,77 @@
-"""Simple agent implementation with HuggingFace Inference API support.
-This gives dynamic AI responses using HuggingFace models.
-If `HF_API_KEY` is set in the environment, the agent will call HuggingFace models.
 """
+Simple agent implementation with Gemini API support.
+Provides dynamic AI responses using Google Gemini.
+"""
+
 from typing import List
 import os
 import httpx
 import json
-
 from dotenv import load_dotenv
-import os
 
 load_dotenv()
 
-HF_KEY = os.getenv("GEMINI_API_KEY")
-HF_MODEL = os.getenv("GEMINI_MODEL")
+# Gemini environment
+GEMINI_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 
-
-
+# LangChain imports
 try:
     from langchain.agents import initialize_agent, Tool, AgentType
-    from langchain.llms.huggingface_hub import HuggingFaceHub
+    from langchain_google_genai import ChatGoogleGenerativeAI
     LANGCHAIN_AVAILABLE = True
 except Exception:
     LANGCHAIN_AVAILABLE = False
 
 
 def _wiki_search(query: str) -> str:
-    """Simple Wikipedia search: returns the first search result summary."""
     if not query:
         return ""
     try:
-        # search
-        s_url = 'https://en.wikipedia.org/w/api.php'
-        params = {'action': 'query', 'list': 'search', 'srsearch': query, 'format': 'json', 'srlimit': 1}
+        s_url = "https://en.wikipedia.org/w/api.php"
+        params = {
+            "action": "query",
+            "list": "search",
+            "srsearch": query,
+            "format": "json",
+            "srlimit": 1
+        }
         r = httpx.get(s_url, params=params, timeout=8.0)
         j = r.json()
-        items = j.get('query', {}).get('search', [])
+        items = j.get("query", {}).get("search", [])
         if not items:
-            return ''
-        title = items[0]['title']
-        # fetch summary
-        summary_url = f'https://en.wikipedia.org/api/rest_v1/page/summary/{httpx.utils.quote(title, safe="")}'
+            return ""
+
+        title = items[0]["title"]
+        summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{httpx.utils.quote(title, safe='')}"
         r2 = httpx.get(summary_url, timeout=8.0)
         j2 = r2.json()
-        return j2.get('extract', '')
+        return j2.get("extract", "")
     except Exception:
-        return ''
+        return ""
 
 
 def _safe_calculate(expr: str) -> str:
-    """Evaluate a simple arithmetic expression safely using ast."""
     import ast
+    allowed_nodes = (
+        ast.Expression, ast.BinOp, ast.UnaryOp, ast.Num,
+        ast.Load, ast.Add, ast.Sub, ast.Mult, ast.Div,
+        ast.Pow, ast.USub, ast.UAdd, ast.Mod, ast.FloorDiv
+    )
 
-    allowed_nodes = (ast.Expression, ast.BinOp, ast.UnaryOp, ast.Num, ast.Load, ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow, ast.USub, ast.UAdd, ast.Mod, ast.FloorDiv, ast.LParen, ast.RParen)
     try:
-        node = ast.parse(expr, mode='eval')
+        node = ast.parse(expr, mode="eval")
         for n in ast.walk(node):
             if not isinstance(n, allowed_nodes):
-                return 'Error: unsupported expression'
-        result = eval(compile(node, '<string>', 'eval'))
+                return "Error: unsupported expression"
+        result = eval(compile(node, "<string>", "eval"))
         return str(result)
     except Exception as e:
-        return f'Error: {e}'
+        return f"Error: {e}"
 
 
-from langchain_google_genai import ChatGoogleGenerativeAI
+_AGENT_INSTANCE = None
+
 
 def _create_agent():
     if not LANGCHAIN_AVAILABLE or not GEMINI_KEY:
@@ -84,27 +91,25 @@ def _create_agent():
         Tool(
             name="wikipedia_search",
             func=_wiki_search,
-            description="Search Wikipedia summaries for factual information."
+            description="Search Wikipedia summaries."
         ),
         Tool(
             name="calculator",
             func=_safe_calculate,
-            description="Safely evaluate arithmetic expressions."
-        ),
+            description="Perform safe math calculations."
+        )
     ]
 
     try:
-        agent = initialize_agent(
+        return initialize_agent(
             tools,
             llm,
             agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
             verbose=True
         )
-        return agent
     except Exception as e:
         print("Agent init failed:", e)
         return None
-
 
 
 def _get_agent():
@@ -114,71 +119,54 @@ def _get_agent():
     return _AGENT_INSTANCE
 
 
-def explain(topic: str, level: str = 'basic') -> str:
-    topic = topic.strip() or 'a topic'
+def explain(topic: str, level: str = "basic") -> str:
+    topic = topic.strip() or "a topic"
 
-    if HF_KEY and LANGCHAIN_AVAILABLE:
+    if GEMINI_KEY and LANGCHAIN_AVAILABLE:
         agent = _get_agent()
         if agent:
-            prompt = f"You are a helpful tutor. Explain {topic} with a 50 word definition."
-            try:
-                return agent.run(prompt)
-            except Exception as e:
-                return f"(agent-failed) {e}"
+            prompt = f"Give a concise definition of {topic}."
+            return agent.run(prompt)
 
-    return f"{topic.capitalize()} is a concept explained at a basic level."
-
-
-
+    return f"{topic.capitalize()} is a concept explained at a {level} level."
 
 
 def generate_quiz(topic: str, count: int = 3) -> List[dict]:
-    topic = topic.strip() or 'general'
-    if HF_KEY and LANGCHAIN_AVAILABLE:
+    topic = topic.strip() or "general"
+
+    if GEMINI_KEY and LANGCHAIN_AVAILABLE:
         agent = _get_agent()
         if agent:
             prompt = (
                 f"Create {count} multiple-choice questions about {topic}. "
-                "For each question return: question, choices (array of 4), and the index of the correct answer. "
-                "Return only valid JSON."
+                "Return JSON only with: question, choices (4), answer index."
             )
+            out = agent.run(prompt)
             try:
-                out = agent.run(prompt)
-                # try to extract JSON from the output
-                try:
-                    parsed = json.loads(out)
-                    return parsed
-                except Exception:
-                    # fallback: return single placeholder
-                    return [{'question': out, 'choices': [], 'answer': 0}]
-            except Exception as e:
-                return [{'question': f'(agent-failed) {e}', 'choices': [], 'answer': 0}]
+                return json.loads(out)
+            except Exception:
+                return [{"question": out, "choices": [], "answer": 0}]
 
-    quizzes = []
-    for i in range(count):
-        q = f"What is a basic concept about {topic}? (question {i+1})"
-        choices = [f"Concept {j+1}" for j in range(4)]
-        quizzes.append({'question': q, 'choices': choices, 'answer': 0})
-    return quizzes
+    return [
+        {
+            "question": f"What is a concept about {topic}? ({i+1})",
+            "choices": [f"Choice {j+1}" for j in range(4)],
+            "answer": 0
+        }
+        for i in range(count)
+    ]
 
 
 def summarize(text: str, sentences: int = 2) -> str:
-    text = (text or '').strip()
+    text = (text or "").strip()
     if not text:
-        return 'No text provided to summarize.'
-    if HF_KEY and LANGCHAIN_AVAILABLE:
+        return "No text provided."
+
+    if GEMINI_KEY and LANGCHAIN_AVAILABLE:
         agent = _get_agent()
         if agent:
-            prompt = f"Summarize the following text in {sentences} sentences:\n\n{text}"
-            try:
-                return agent.run(prompt)
-            except Exception as e:
-                return f"(agent-failed) {e}"
+            prompt = f"Summarize this in {sentences} sentences:\n{text}"
+            return agent.run(prompt)
 
-    parts = text.replace('\n', ' ').split('.')
-    parts = [p.strip() for p in parts if p.strip()]
-    summary = '. '.join(parts[:sentences])
-    if not summary.endswith('.'):
-        summary += '.'
-    return summary
-
+    parts = [p.strip() for p in text.split(".") if p.strip()]
+    return ". ".join(parts[:sentences]) + "."
