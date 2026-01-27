@@ -12,8 +12,8 @@ import os
 
 load_dotenv()
 
-HF_KEY = os.getenv("HF_API_KEY")
-HF_MODEL = os.getenv("HF_MODEL")
+HF_KEY = os.getenv("GEMINI_API_KEY")
+HF_MODEL = os.getenv("GEMINI_MODEL")
 
 
 
