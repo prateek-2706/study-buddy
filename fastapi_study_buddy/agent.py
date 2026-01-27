@@ -99,12 +99,8 @@ def explain(topic: str, level: str = 'basic') -> str:
         agent = _get_agent()
         if agent:
             prompt = f"You are a helpful tutor. Explain {topic} with a 50 word definition."
-            try:
                 return agent.run(prompt)
-            except Exception as e:
-                return f"(agent-failed) {e}"
 
-    return f"{topic.capitalize()} — a short explanation at {level} level."
 
 
 
