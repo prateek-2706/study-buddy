@@ -64,31 +64,47 @@ def _safe_calculate(expr: str) -> str:
         return f'Error: {e}'
 
 
+from langchain_google_genai import ChatGoogleGenerativeAI
+
 def _create_agent():
-    if not LANGCHAIN_AVAILABLE or not HF_KEY:
+    if not LANGCHAIN_AVAILABLE or not GEMINI_KEY:
         return None
+
     try:
-        llm = HuggingFaceHub(
-            repo_id=HF_MODEL,
-            huggingfacehub_api_token=HF_KEY,
-            model_kwargs={'temperature': 0.5, 'max_length': 256}
+        llm = ChatGoogleGenerativeAI(
+            model=GEMINI_MODEL,
+            google_api_key=GEMINI_KEY,
+            temperature=0.5
         )
-    except Exception:
+    except Exception as e:
+        print("Gemini LLM init failed:", e)
         return None
 
     tools = [
-        Tool(name='wikipedia_search', func=_wiki_search, description='Useful for searching Wikipedia summaries for factual information.'),
-        Tool(name='calculator', func=_safe_calculate, description='Performs safe arithmetic calculations. Input is a math expression.'),
+        Tool(
+            name="wikipedia_search",
+            func=_wiki_search,
+            description="Search Wikipedia summaries for factual information."
+        ),
+        Tool(
+            name="calculator",
+            func=_safe_calculate,
+            description="Safely evaluate arithmetic expressions."
+        ),
     ]
 
     try:
-        agent = initialize_agent(tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=False)
+        agent = initialize_agent(
+            tools,
+            llm,
+            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+            verbose=True
+        )
         return agent
-    except Exception:
+    except Exception as e:
+        print("Agent init failed:", e)
         return None
 
-
-_AGENT_INSTANCE = None
 
 
 def _get_agent():
