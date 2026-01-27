@@ -14,7 +14,7 @@ load_dotenv()
 
 HF_KEY = os.getenv("HF_API_KEY")
 HF_MODEL = os.getenv("HF_MODEL")
-HF_API_URL = os.getenv("HF_API_URL")
+
 
 
 try:
